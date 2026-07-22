@@ -1,0 +1,63 @@
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.44.6-Solothurn">
+  <identifier>inti_CARTOINTI_DPT_PARROQUIAS</identifier>
+  <parentidentifier></parentidentifier>
+  <language>ES</language>
+  <type>dataset</type>
+  <title>inti_CARTOINTI_DPT_PARROQUIAS</title>
+  <abstract>EL CONJUNTO DE DATOS CONTENIDOS EN ESTE ARCHIVO CORRESPONDE A LA DIVISION POLITICO TERRITORRIAL A NIVEL PARROQUIAL DE LA REPUBLICA BOLIVARIANA DE VENEZUELA
+
+PROVEER A LOS DIFERENTES USUARIOS LA DIVISION POLITICO TERRITORRIAL A NIVEL PARROQUIAL DE LA REPUBLICA BOLIVARIANA DE VENEZUELA PARA LA TOMA DE DECISION.
+
+INFORMACION GENERADA POR EL INSTITUTO NACIONAL DE ESTADISTICA. MINISTERIO DE PLANIFICACION Y DESARROLLO. 2001</abstract>
+  <keywords vocabulary="gmd:topicCategory">
+    <keyword>SIG</keyword>
+  </keywords>
+  <contact>
+    <contactAddress>
+      <type></type>
+      <address></address>
+      <city>CARACAS</city>
+      <administrativearea>DISTRITO CAPITAL</administrativearea>
+      <postalcode>1050</postalcode>
+      <country>VENEZUELA</country>
+    </contactAddress>
+    <name>INSTITUTO NACIONAL DE ESTADISTICA.</name>
+    <organization>INSTITUTO NACIONAL DE ESTADISTICA.</organization>
+    <position></position>
+    <voice></voice>
+    <fax></fax>
+    <email></email>
+    <role>Punto de contacto</role>
+  </contact>
+  <links>
+    <link type="Local Area Network" format="" size="" description="" name="Shapefile" url="file://\\DIANA_GALLEGO\D$\ALO PRESIDENTE APURE FEB 2008\omakon\SHP\COBERTURAS DPT\inti_CARTOINTI_DPT_PARROQUIAS.shp" mimeType=""/>
+  </links>
+  <dates/>
+  <fees></fees>
+  <constraints type="Acceso">NINGUNO</constraints>
+  <rights>NINGUNO</rights>
+  <encoding></encoding>
+  <crs>
+    <spatialrefsys nativeFormat="Wkt">
+      <wkt></wkt>
+      <proj4>+proj=utm +zone=19 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs</proj4>
+      <srsid>0</srsid>
+      <srid>0</srid>
+      <authid></authid>
+      <description></description>
+      <projectionacronym></projectionacronym>
+      <ellipsoidacronym></ellipsoidacronym>
+      <geographicflag>false</geographicflag>
+    </spatialrefsys>
+  </crs>
+  <extent>
+    <spatial miny="0.64392000000000005" minz="0" dimensions="2" maxz="0" maxx="-58.17725999999999686" crs="EPSG:4326" minx="-73.3796999999999997" maxy="12.19785000000000075"/>
+    <temporal>
+      <period>
+        <start></start>
+        <end></end>
+      </period>
+    </temporal>
+  </extent>
+</qgis>
