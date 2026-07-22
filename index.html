@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Geoportal - Sectorización PVR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    #map { height: 100vh; width: 100vw; }
+    
+    /* Panel de control flotante */
+    .panel {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 290px;
+    }
+    .panel h3 { margin: 0 0 5px 0; font-size: 15px; color: #1e293b; }
+    .panel p { margin: 0 0 10px 0; font-size: 12px; color: #64748b; }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .badge-pub { background: #e2e8f0; color: #475569; }
+    .badge-inst { background: #dcfce7; color: #166534; }
+    
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      background: #f59e0b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #d97706; }
+    
+    /* Modal de Autenticación */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0; top: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      width: 280px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .modal-content h4 { margin-top: 0; color: #0f172a; }
+    .modal-content input {
+      width: 90%;
+      padding: 8px;
+      margin: 8px 0 15px 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+    }
+    .btn-cancel { background: #64748b; margin-top: 5px; }
+    .btn-cancel:hover { background: #475569; }
+
+    /* Imagen del popup */
+    .popup-img { 
+      width: 100%; 
+      max-width: 250px; 
+      margin-top: 15px; 
+      border-radius: 6px; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: block; 
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <!-- Panel de control -->
+  <div class="panel">
+    <h3>Plan Venezuela Renace</h3>
+    <p>Capa: Sectorización PVR</p>
+    <span id="estado-badge" class="badge badge-pub">Vista: Pública</span>
+    <button id="btn-login" onclick="abrirModal()">Acceso Restringido</button>
+  </div>
+
+  <!-- Modal Login -->
+  <div id="modal-login" class="modal">
+    <div class="modal-content">
+      <h4>Inicio de Sesión</h4>
+      <label style="font-size:12px;">Usuario:</label>
+      <input type="text" id="usuario" placeholder="Ej. admin">
+      <label style="font-size:12px;">Contraseña:</label>
+      <input type="password" id="clave" placeholder="••••••••">
+      <button onclick="validarLogin()">Ingresar</button>
+      <button onclick="cerrarModal()" class="btn-cancel">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <script>
+    const map = L.map('map').setView([10.6000, -66.9000], 12);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Fuente: Esri, Maxar'
+    }).addTo(map);
+
+    let capaActual = null;
+    let esModoInstitucional = false;
+
+    // CREDENCIALES
+    const USER_CORRECTO = "admin";
+    const PASS_CORRECTO = "ucv2026";
+
+    // Búsqueda de propiedades ignorando mayúsculas
+    function getProp(props, posiblesNombres) {
+      if (!props) return null;
+      for (let nombre of posiblesNombres) {
+        if (props[nombre] !== undefined && props[nombre] !== null && props[nombre] !== "") {
+          return props[nombre];
+        }
+        const keyMatch = Object.keys(props).find(k => k.toLowerCase() === nombre.toLowerCase());
+        if (keyMatch && props[keyMatch] !== undefined && props[keyMatch] !== null && props[keyMatch] !== "") {
+          return props[keyMatch];
+        }
+      }
+      return null;
+    }
+
+    function cargarCapa() {
+      fetch('sectorizacion_pvr.geojson')
+        .then(response => response.json())
+        .then(data => {
+          if (capaActual) map.removeLayer(capaActual);
+
+          capaActual = L.geoJSON(data, {
+            style: function (feature) {
+              return { color: "#f59e0b", weight: 2, fillOpacity: 0.3 };
+            },
+            pointToLayer: function (feature, latlng) {
+              return L.circleMarker(latlng, {
+                radius: 8, fillColor: "#f59e0b", color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.9
+              });
+            },
+            onEachFeature: function (feature, layer) {
+              const p = feature.properties;
+              
+              // Variables fijas para ambas vistas
+              const sector = getProp(p, ['Sector', 'SECTOR', 'sector', 'Sector / Macro-Sector']) || 'Sector sin nombre';
+              const ente = getProp(p, ['Ente', 'ENTE', 'ente', 'Responsable']);
+              
+              let popupHtml = `<strong style="font-size:15px; color:#0f172a;">${sector}</strong>`;
+              popupHtml += `<hr style="border:0.5px solid #e2e8f0; margin:8px 0;">`;
+
+              // ==========================================
+              // VISTA PÚBLICA (Solo campos específicos)
+              // ==========================================
+              if (!esModoInstitucional) {
+                const verde = getProp(p, ['Verde', 'VERDE', 'verde', 'Verdes (V)', 'Verdes']);
+                const amarillo = getProp(p, ['Amarillo', 'AMARILLO', 'amarillo', 'Amarillo (A)', 'Amarillos']);
+                const rojo = getProp(p, ['Rojo', 'ROJO', 'rojo', 'Rojas (R)', 'Rojas']);
+                const total = getProp(p, ['Total', 'TOTAL', 'total']);
+
+                popupHtml += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size:13px; line-height:1.4;">`;
+                popupHtml += `<div>🟢 <b>Verdes:</b> <span style="float:right;">${verde !== null ? verde : '-'}</span></div>`;
+                popupHtml += `<div>🟡 <b>Amarillos:</b> <span style="float:right;">${amarillo !== null ? amarillo : '-'}</span></div>`;
+                popupHtml += `<div>🔴 <b>Rojos:</b> <span style="float:right;">${rojo !== null ? rojo : '-'}</span></div>`;
+                popupHtml += `<div>📊 <b>Total:</b> <span style="float:right; font-weight:bold;">${total !== null ? total : '-'}</span></div>`;
+                popupHtml += `</div>`;
+              } 
+              
+              // ==========================================
+              // VISTA PRIVADA / INSTITUCIONAL (Todos los campos)
+              // ==========================================
+              else {
+                // Iterar e imprimir absolutamente todos los atributos de la tabla
+                let tablaCampos = `<div style="font-size:12px; line-height:1.5; max-height: 180px; overflow-y: auto; padding-right:5px;">`;
+                for (const key in p) {
+                  if (p[key] !== null && p[key] !== "") {
+                    // Evitar repetir el sector que ya está en el título
+                    if(key.toLowerCase() !== 'sector') {
+                        tablaCampos += `<div style="border-bottom: 1px solid #f1f5f9; padding: 3px 0;">
+                                          <b style="color:#475569;">${key}:</b> ${p[key]}
+                                        </div>`;
+                    }
+                  }
+                }
+                tablaCampos += `</div>`;
+                popupHtml += tablaCampos;
+              }
+
+              // ==========================================
+              // IMAGEN DINÁMICA (Visible en AMBAS vistas)
+              // ==========================================
+              if (ente) {
+                const nombreImagen = encodeURIComponent(ente) + ".jpg"; 
+                popupHtml += `<div style="text-align:center;">
+                                <img src="./img/${nombreImagen}" alt="${ente}" class="popup-img" onerror="this.style.display='none';"> 
+                              </div>`;
+              }
+
+              layer.bindPopup(popupHtml, { minWidth: 260 });
+            }
+          }).addTo(map);
+
+          if (data.features && data.features.length > 0) {
+            map.fitBounds(capaActual.getBounds(), { padding: [40, 40] });
+          }
+        })
+        .catch(err => console.error("Error al cargar GeoJSON:", err));
+    }
+
+    // Carga inicial
+    cargarCapa();
+
+    // Control de Modal y Sesión
+    function abrirModal() {
+      if (esModoInstitucional) {
+        esModoInstitucional = false;
+        document.getElementById('estado-badge').innerText = "Vista: Pública";
+        document.getElementById('estado-badge').className = "badge badge-pub";
+        document.getElementById('btn-login').innerText = "Acceso Restringido";
+        document.getElementById('btn-login').style.background = "#f59e0b";
+        cargarCapa(); 
+      } else {
+        document.getElementById('modal-login').style.display = 'flex';
+      }
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-login').style.display = 'none';
+    }
+
+    function validarLogin() {
+      const u = document.getElementById('usuario').value;
+      const c = document.getElementById('clave').value;
+
+      if (u === USER_CORRECTO && c === PASS_CORRECTO) {
+        esModoInstitucional = true;
+        document.getElementById('estado-badge').innerText = "Vista: Privada";
+        document.getElementById('estado-badge').className = "badge badge-inst";
+        document.getElementById('btn-login').innerText = "Cerrar Sesión";
+        document.getElementById('btn-login').style.background = "#dc2626"; 
+        
+        cargarCapa(); 
+        cerrarModal();
+        
+        document.getElementById('usuario').value = '';
+        document.getElementById('clave').value = '';
+      } else {
+        alert("Usuario o contraseña incorrectos.");
+      }
+    }
+  </script>
+</body>
+</html>
