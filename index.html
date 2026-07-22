@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Visor Público - Sectorización PVR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    #map { height: 100vh; width: 100vw; }
+    
+    /* Estilo para la imagen dentro de la ventana emergente */
+    .popup-img { 
+      width: 100%; 
+      max-width: 250px; 
+      margin-top: 10px; 
+      border-radius: 6px; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: block; 
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <script>
+    // 1. Inicializar mapa (se auto-centrará al cargar los datos)
+    const map = L.map('map').setView([10.6000, -66.9000], 12);
+
+    // 2. Capa Base Satelital (Esri World Imagery)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Fuente: Esri, Maxar'
+    }).addTo(map);
+
+    // Función auxiliar para buscar propiedades en el GeoJSON ignorando Mayúsculas/Minúsculas
+    function getProp(props, posiblesNombres) {
+      if (!props) return null;
+      for (let nombre of posiblesNombres) {
+        if (props[nombre] !== undefined && props[nombre] !== null && props[nombre] !== "") {
+          return props[nombre];
+        }
+        const keyMatch = Object.keys(props).find(k => k.toLowerCase() === nombre.toLowerCase());
+        if (keyMatch && props[keyMatch] !== undefined && props[keyMatch] !== null && props[keyMatch] !== "") {
+          return props[keyMatch];
+        }
+      }
+      return null;
+    }
+
+    // 3. Cargar la capa GeoJSON sectorizacion_pvr
+    fetch('sectorizacion_pvr.geojson')
+      .then(response => response.json())
+      .then(data => {
+        const capaSectores = L.geoJSON(data, {
+          // Estilo aplicable si la capa es de Polígonos (Sectores)
+          style: function (feature) {
+            return {
+              color: "#f59e0b", // Color del borde (Naranja)
+              weight: 2,
+              fillOpacity: 0.3
+            };
+          },
+          // Estilo aplicable si la capa es de Puntos
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: "#f59e0b",
+              color: "#ffffff",
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.9
+            });
+          },
+          // Configuración de la ventana emergente
+          onEachFeature: function (feature, layer) {
+            const p = feature.properties;
+            
+            // Extracción de los 4 campos solicitados
+            const ente = getProp(p, ['Ente', 'ENTE', 'ente']);
+            const sector = getProp(p, ['Sector', 'SECTOR', 'sector']);
+            const ubiEspec = getProp(p, ['Ubi_Espec', 'UBI_ESPEC', 'ubi_espec']);
+            const id = getProp(p, ['ID', 'id', 'Id']);
+
+            // Construcción del contenido HTML del popup
+            let popupHtml = `<strong style="font-size:15px; color:#0f172a;">${sector || 'Sector sin nombre'}</strong>`;
+            if (id) popupHtml += `<br><small style="color:#64748b;">ID: ${id}</small>`;
+            popupHtml += `<hr style="border:0.5px solid #e2e8f0; margin:8px 0;">`;
+            
+            if (ubiEspec) popupHtml += `<p style="margin:5px 0; font-size:13px; line-height:1.4;"><b>Ubicación:</b> ${ubiEspec}</p>`;
+            if (ente) popupHtml += `<p style="margin:5px 0; font-size:13px; line-height:1.4;"><b>Ente:</b> ${ente}</p>`;
+            
+            // --- LÓGICA DE LA IMAGEN DINÁMICA ---
+            if (ente) {
+              // 1. Asumimos que las imágenes están en formato .jpg (puedes cambiarlo a .png si lo necesitas)
+              // 2. encodeURIComponent evita que los espacios del nombre rompan la ruta (ej: "BARRIO NUEVO TRICOLOR")
+              const nombreImagen = encodeURIComponent(ente) + ".jpg"; 
+              
+              // onerror oculta el recuadro si la imagen no existe en la carpeta, para mantenerlo limpio
+              popupHtml += `<div style="text-align:center;">
+                              <img src="./img/${nombreImagen}" alt="${ente}" class="popup-img" onerror="this.style.display='none';"> 
+                            </div>`;
+            }
+
+            layer.bindPopup(popupHtml, { minWidth: 260 });
+          }
+        }).addTo(map);
+
+        // Auto-encuadre: centra la vista satelital abarcando toda la extensión de la capa
+        if (data.features && data.features.length > 0) {
+          map.fitBounds(capaSectores.getBounds(), { padding: [40, 40] });
+        }
+      })
+      .catch(err => console.error("Error al cargar sectorizacion_pvr.geojson:", err));
+  </script>
+</body>
+</html>
